@@ -42,7 +42,6 @@ stages:
         containerRegistry: 'ContainerInstancesSC'
         azureSubscription: 'ContainerRegistrySC'
         scriptType: 'bash'
-        scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
           # Deploy containers using docker-compose in the specified resource group
