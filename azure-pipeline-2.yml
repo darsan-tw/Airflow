@@ -23,6 +23,6 @@ steps:
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
-      az provider register --namespace Microsoft.ContainerInstance
+#      az provider register --namespace Microsoft.ContainerInstance
       az container create --resource-group dev-ingestion-framework --file docker-compose.yaml --name airflow --registry-login-server devingest.azurecr.io --registry-username devingest --registry-password $(ACR_PASS)
 #      az container create --resource-group dev-ingestion-framework --file docker-compose.yaml --name airflow --dns-name-label your-dns-name --location your-location
