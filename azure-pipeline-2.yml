@@ -7,13 +7,13 @@ pool:
 steps:
 
 - script: |
-  displayName: 'Create directories'
     mkdir -p './dags ./logs ./plugins ./config'
+  displayName: 'Create directories'
 
 - script: |
-  displayName: 'Set environment variables'
     echo -e "AIRFLOW_UID=$(id -u)" > .env
     export AIRFLOW_UID=50000
+  displayName: 'Set environment variables'
   
   
 - task: AzureCLI@2
