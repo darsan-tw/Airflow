@@ -23,4 +23,5 @@ steps:
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
-      az container create --resource-group dev-ingestion-framework --file docker-compose.yaml --name airflow docker-compose.yaml --registry-login-server devingest.azurecr.io --registry-username devingest --registry-password $(ACR_PASSWORD)
+      az container create --resource-group dev-ingestion-framework --file docker-compose.yaml --name airflow docker-compose.yaml --registry-login-server devingest.azurecr.io --registry-username devingest --registry-password $(ACR_PASS)
+#      az container create --resource-group dev-ingestion-framework --file docker-compose.yaml --name airflow --dns-name-label your-dns-name --location your-location
