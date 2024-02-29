@@ -1,0 +1,26 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+
+- script: |
+    displayName: 'Create directories'
+    mkdir -p './dags ./logs ./plugins ./config'
+
+- script: |
+  displayName: 'Set environment variables'
+    echo -e "AIRFLOW_UID=$(id -u)" > .env
+    export AIRFLOW_UID=50000
+  
+  
+- task: AzureCLI@2
+  displayName: 'Deploy containers to ACI'
+  inputs:
+    azureSubscription: '<Azure subscription connection>'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az container create --resource-group dev-ingestion-framework --file docker-compose.yaml --name airflow docker-compose.yaml --registry-login-server devingest.azurecr.io --registry-username devingest --registry-password $(ACR_PASSWORD)
