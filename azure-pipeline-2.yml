@@ -7,7 +7,7 @@ pool:
 steps:
 
 - script: |
-    displayName: 'Create directories'
+  displayName: 'Create directories'
     mkdir -p './dags ./logs ./plugins ./config'
 
 - script: |
