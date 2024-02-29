@@ -50,7 +50,7 @@ x-airflow-common:
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.6.1}
+  image: devingest.azurecr.io/airflow:2.6.1
   # build: .
   environment:
     &airflow-common-env
@@ -91,7 +91,7 @@ x-airflow-common:
 
 services:
   postgres:
-    image: postgres:13
+    image: devingest.azurecr.io/postgres:13
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -106,7 +106,7 @@ services:
     restart: always
 
   redis:
-    image: redis:latest
+    image: devingest.azurecr.io/redis:latest
     expose:
       - 6379
     healthcheck:
@@ -121,7 +121,7 @@ services:
     <<: *airflow-common
     command: webserver
     ports:
-      - "8080:8080"
+      - "80:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -278,7 +278,7 @@ services:
       - airflow
 
   statsd-exporter:
-    image: prom/statsd-exporter:v0.24.0
+    image: devingest.azurecr.io/statsd-exporter:v0.24.0
     container_name: statsd-exporter
     volumes:
       - ./config_files/statsd/statsd.yaml:/home/statsd-mapping-configs.yaml
@@ -292,7 +292,7 @@ services:
     restart: always
   
   prometheus:
-    image: prom/prometheus:v2.37.9
+    image: devingest.azurecr.io/prometheus:v2.37.9
     container_name: prometheus
     volumes:
       - ./config_files/prometheus/:/etc/prometheus/
@@ -307,7 +307,7 @@ services:
     restart: always
 
   grafana:
-    image: grafana/grafana:10.0.3-ubuntu
+    image: devingest.azurecr.io/grafana:10.0.3-ubuntu
     container_name: grafana
     depends_on:
       - prometheus
@@ -324,4 +324,3 @@ volumes:
   postgres-db-volume:
   prometheus_data:
   grafana_data:
-
