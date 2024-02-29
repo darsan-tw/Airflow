@@ -19,7 +19,7 @@ steps:
 - task: AzureCLI@2
   displayName: 'Deploy containers to ACI'
   inputs:
-    azureSubscription: '<Azure subscription connection>'
+    azureSubscription: 'ContainerInstancesSC'
     scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
