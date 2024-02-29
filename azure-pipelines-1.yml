@@ -39,8 +39,8 @@ stages:
       displayName: 'Login to Azure Container Registry'
       inputs:
         command: 'login'
-        containerRegistry: 'ContainerInstancesSC'
-        azureSubscription: 'ContainerRegistrySC'
+        containerRegistry: 'ContainerRegistrySC'
+        azureSubscription: 'ContainerInstancesSC'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
