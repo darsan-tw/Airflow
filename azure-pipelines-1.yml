@@ -1,0 +1,51 @@
+trigger:
+- main
+
+pool:
+  name: 'default'
+
+stages:
+- stage: DeployContainers
+  displayName: 'Deploy Containers'
+  jobs:
+  - job: DeployUsingDockerCompose
+    displayName: 'Deploy using Docker Compose'
+    steps:
+    
+    - task: Docker@2
+      displayName: 'Login to Azure Container Registry'
+      inputs:
+        command: 'login'
+        containerRegistry: 'ContainerRegistrySC'
+
+    - script: |
+        mkdir -p ./dags ./logs ./plugins ./config
+        displayName: 'Create directories'
+
+    - script: |
+        echo -e "AIRFLOW_UID=$(id -u)" > .env
+        export AIRFLOW_UID=50000
+      displayName: 'Set environment variables'
+
+    - script: |
+        docker-compose up airflow-init
+      displayName: 'Run docker compose up airflow-init'
+
+    - script: |
+        docker-compose up
+      displayName: 'Run docker compose up'
+
+    - task: Docker@2
+      displayName: 'Login to Azure Container Registry'
+      inputs:
+        command: 'login'
+        containerRegistry: 'ContainerInstancesSC'
+        azureSubscription: 'ContainerRegistrySC'
+        scriptType: 'bash'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Deploy containers using docker-compose in the specified resource group
+          cd path/to/docker-compose-directory
+          docker-compose up -d
+        azureResourceGroup: 'dev-ingestion-framework'
