@@ -19,24 +19,17 @@ stages:
         containerRegistry: 'ContainerRegistrySC'
 
     - script: |
+        mkdir /opt/airflow
+        cd /opt/airflow
         mkdir -p './dags ./logs ./plugins ./config'
       displayName: 'Create directories'
 
     - script: |
         echo -e "AIRFLOW_UID=$(id -u)" > .env
         export AIRFLOW_UID=50000
-      displayName: 'Set environment variables'   
+      displayName: 'Set environment variables'
 
-    - task: AzureCLI@2
-      displayName: 'Deploy AirFlow'
-      inputs:
-        containerRegistry: 'ContainerRegistrySC'
-        azureSubscription: 'ContainerInstancesSC'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          # Deploy containers using docker-compose in the specified resource group
-
-          docker-compose -f $(Build.SourcesDirectory)/docker-compose.yaml pull
-          docker-compose -f $(Build.SourcesDirectory)/docker-compose.yaml up -d
-        azureResourceGroup: 'dev-ingestion-framework'
+    - script: |
+        docker compose up airflow-init
+        docker compose up -d
+      displayName: 'Deploy Airflow'    
