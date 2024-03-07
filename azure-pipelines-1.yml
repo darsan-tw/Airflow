@@ -23,11 +23,11 @@ stages:
         docker-compose down
       displayName: 'Deploy Airflow' 
 
-    - script: |
-        mkdir /opt/airflow
-        cd /opt/airflow
-        mkdir -p './dags ./logs ./plugins ./config'
-      displayName: 'Create directories'
+   # - script: |
+   #     mkdir /opt/airflow
+   #     cd /opt/airflow
+   #     mkdir -p './dags ./logs ./plugins ./config'
+   #   displayName: 'Create directories'
 
     - script: |
         echo -e "AIRFLOW_UID=$(id -u)" > .env
