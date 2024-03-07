@@ -19,6 +19,11 @@ stages:
         containerRegistry: 'ContainerRegistrySC'
 
     - script: |
+        docker compose up airflow-init
+        docker-compose down
+      displayName: 'Deploy Airflow' 
+
+    - script: |
         mkdir /opt/airflow
         cd /opt/airflow
         mkdir -p './dags ./logs ./plugins ./config'
@@ -31,5 +36,5 @@ stages:
 
     - script: |
         docker compose up airflow-init
-        docker compose up -d
+        docker-compose up -d
       displayName: 'Deploy Airflow'    
