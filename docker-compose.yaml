@@ -24,7 +24,7 @@
 # The following variables are supported:
 #
 # AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
-#                                Default: apache/airflow:2.82
+#                                Default: apache/airflow:2.8.2
 # AIRFLOW_UID                  - User ID in Airflow containers
 #                                Default: 50000
 # AIRFLOW_PROJ_DIR             - Base path to which all the files will be volumed.
@@ -44,36 +44,28 @@
 #
 # Feel free to modify this file to suit your needs.
 ---
-version: '3.8'
 x-airflow-common:
   &airflow-common
   # In order to add custom dependencies or upgrade provider packages you can use your extended image.
   # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
   # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-airflow-tw:latest}
-  # build: .
+  # image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.2}
+  build: .
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    # For backward compatibility, with Airflow <2.3
-    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
     AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ''
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
-    AIRFLOW__METRICS__STATSD_ON: "True"
-    AIRFLOW__METRICS__STATSD_HOST: "statsd-exporter"
-    AIRFLOW__METRICS__STATSD_PORT: "9125"
-    AIRFLOW__METRICS__STATSD_PREFIX: "airflow"
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
     # yamllint enable rule:line-length
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    AIRFLOW_UID: 50000
     # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
     # for other purpose (development, test and especially production usage) build/extend Airflow image.
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
@@ -82,6 +74,7 @@ x-airflow-common:
     - /opt/airflow/logs:/opt/airflow/logs
     - /opt/airflow/config:/opt/airflow/config
     - /opt/airflow/plugins:/opt/airflow/plugins
+    - /opt/airflow/lib/jars:/opt/airflow/jars
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -98,7 +91,7 @@ services:
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
     volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
+      - /opt/airflow/postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
@@ -154,9 +147,10 @@ services:
     <<: *airflow-common
     command: celery worker
     healthcheck:
+      # yamllint disable rule:line-length
       test:
         - "CMD-SHELL"
-        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
       interval: 30s
       timeout: 10s
       retries: 5
@@ -194,20 +188,6 @@ services:
     command:
       - -c
       - |
-        function ver() {
-          printf "%04d%04d%04d%04d" $${1//./ }
-        }
-        airflow_version=$$(AIRFLOW__LOGGING__LOGGING_LEVEL=INFO && gosu airflow airflow version)
-        airflow_version_comparable=$$(ver $${airflow_version})
-        min_airflow_version=2.2.0
-        min_airflow_version_comparable=$$(ver $${min_airflow_version})
-        if (( airflow_version_comparable < min_airflow_version_comparable )); then
-          echo
-          echo -e "\033[1;31mERROR!!!: Too old Airflow version $${airflow_version}!\e[0m"
-          echo "The minimum Airflow version supported: $${min_airflow_version}. Only use this or higher!"
-          echo
-          exit 1
-        fi
         if [[ -z "${AIRFLOW_UID}" ]]; then
           echo
           echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
@@ -256,7 +236,7 @@ services:
     # yamllint enable rule:line-length
     environment:
       <<: *airflow-common-env
-      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}
@@ -278,11 +258,35 @@ services:
       - -c
       - airflow
 
+  # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
+  # or by explicitly targeted on the command line e.g. docker-compose up flower.
+  # See: https://docs.docker.com/compose/profiles/
+  flower:
+    <<: *airflow-common
+    command: celery flower
+    profiles:
+      - flower
+    ports:
+      - "5555:5555"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+####### Statsd, prometheus, grafana setup
+
   statsd-exporter:
     image: prom/statsd-exporter:v0.24.0
     container_name: statsd-exporter
     volumes:
-      - ./config_files/statsd/statsd.yaml:/home/statsd-mapping-configs.yaml
+      - /opt/airflow/config_files/statsd/statsd.yaml:/home/statsd-mapping-configs.yaml
     entrypoint: ["/bin/sh", "-c", "--"]
     command: ["statsd_exporter --statsd.listen-udp=:9125 --web.listen-address=:9102 --log.level debug --statsd.mapping-config=/home/statsd-mapping-configs.yaml"]
     ports:
@@ -296,8 +300,8 @@ services:
     image: prom/prometheus:v2.37.9
     container_name: prometheus
     volumes:
-      - ./config_files/prometheus/:/etc/prometheus/
-      - prometheus_data:/prometheus
+      - /opt/airflow/config_files/prometheus/:/etc/prometheus/
+      - /opt/airflow/prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yaml'
       - '--storage.tsdb.path=/prometheus'
@@ -315,13 +319,8 @@ services:
     ports:
       - 3000:3000
     volumes:
-      - grafana_data:/var/lib/grafana
-      - ./config_files/grafana/etc/grafana/provisioning/dashboards/:/etc/grafana/provisioning/dashboards/
-      - ./config_files/grafana/etc/grafana/provisioning/datasources/:/etc/grafana/provisioning/datasources/
-      - ./config_files/grafana/var/lib/grafana/dashboards/:/var/lib/grafana/dashboards/
-      - ./config_files/grafana/var/lib/grafana/plugins/:/var/lib/grafana/plugins/
-
-volumes:
-  postgres-db-volume:
-  prometheus_data:
-  grafana_data:
+      - /opt/airflow/grafana_data:/var/lib/grafana
+      - /opt/airflow/config_files/grafana/etc/grafana/provisioning/dashboards/:/etc/grafana/provisioning/dashboards/
+      - /opt/airflow/config_files/grafana/etc/grafana/provisioning/datasources/:/etc/grafana/provisioning/datasources/
+      - /opt/airflow/config_files/grafana/var/lib/grafana/dashboards/:/var/lib/grafana/dashboards/
+      - /opt/airflow/config_files/grafana/var/lib/grafana/plugins/:/var/lib/grafana/plugins/
