@@ -1,5 +1,6 @@
 FROM apache/airflow:2.8.2
 
+
 USER root
 #install Java
 RUN apt-get update \
@@ -19,7 +20,15 @@ RUN ACCEPT_EULA=Y apt-get install -y mssql-tools18
 RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
 RUN source ~/.bashrc
 
-USER airflow
 
-COPY requirements.txt /
-RUN pip install --no-cache-dir -r /requirements.txt
+COPY set-pyspark-submit-args.sh /usr/src/app/
+
+# Make the script executable
+RUN chmod +x /usr/src/app/set-pyspark-submit-args.sh
+
+# Run the script to set PYSPARK_SUBMIT_ARGS
+RUN /usr/src/app/set-pyspark-submit-args.sh
+
+user airflow
+COPY requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
